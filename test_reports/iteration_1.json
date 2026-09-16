@@ -1,0 +1,37 @@
+{
+  "summary": "Frontend end-to-end testing of Skyline Empire (Expo/React Native web preview @ 390x844) against live external backend (acquire-game.emergent.host). Home/Boardroom, Rules, Setup, and Game screens all load and render correctly. Core turn loop confirmed across 6+ full turns: human places tile -> Buy sheet -> buy-and-end/end-turn -> AI deliberating indicator -> AI founds/buys -> control returns to human. Buy flow with active chain works (buy-astor-inc stepper + buy-and-end reduced cash 6500->6300 and credited 1 share). Sabotage indicator (open-sabotage) appears on human turn and sabotage-sheet opens with target buttons (sabotage-player-1) shown. Resume from ledger opens correct game; delete removes a row; Session Not Found renders for a bad game id and nf-back returns to Boardroom. Founding by human, merger flow, tie sheet, payout sheet, rematch, and game_over/GameOverSheet were not reachable within test session (require specific board states) — best-effort attempted; nothing broke. No red-screen errors; no crashes; only benign React Native Web deprecation warning about props.pointerEvents.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Boardroom (/)", "issues": ["Section labels use CSS text-transform:uppercase (expected per problem statement). All contrast, spacing (8pt grid) and touch targets look correct on 390x844."]}
+    ],
+    "react_native_issues": [
+      {"component": "Global (React Native Web)", "issue": "Console warning: 'props.pointerEvents is deprecated. Use style.pointerEvents.' Non-blocking but should be cleaned up. Likely emitted from an internal RN Web component; grep for pointerEvents={...} props in /app/frontend/src/components."},
+      {"component": "Boardroom transition", "issue": "Playwright observed 2 concurrent DOM nodes with data-testid='home-local-play' briefly after navigating back from a game via game-back. Likely an Expo Router transition artifact where the previous screen remains mounted for a moment. Not blocking, but could confuse automated tests / accessibility."}
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Optional: silence 'props.pointerEvents is deprecated' RN Web warning by migrating pointerEvents from a prop to style.pointerEvents in the offending component(s).",
+    "Investigate transient duplicate 'home-local-play' testID during Expo Router transition from /game/[id] -> / (mount/unmount timing).",
+    "Merger/tie/payout/rematch flows were not reached in this iteration due to board-state dependencies. Recommend adding a scripted seed or dev-only 'jump to merger' path for testability."
+  ],
+  "critical_code_review_comments": [
+    "api.ts correctly uses process.env.EXPO_PUBLIC_GAME_API_URL with no default (fails fast). Good.",
+    "app/game/[id].tsx uses a mounted ref + stepping ref to drive AI sub-turns safely; timers cleaned up on unmount. Good.",
+    "TileRack/Board CELL width is computed from Dimensions.get('window').width at module load — will not reflow on rotation/resize on web. Acceptable for mobile-first.",
+    "All interactive elements have testID (hand-tile-<TILE>, buy-<chainId>, buy-<chainId>-inc/dec, buy-and-end, end-turn, found-<chainId>, sabotage-player-<id>, sabotage-chain-<id>, sabotage-peek, game-back, nf-back, resume-game-<id>, delete-game-<id>, etc.). Good testability."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (external live API, not tested)", "frontend": "~90% (all reachable flows passed; merger/rematch/founding-by-human not reached)"},
+  "seed_data_creation": "Created several games via the live backend by starting Local Play from the UI. These remain in the ledger and can be deleted from the Boardroom.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Preview URL: https://memory-handoff.preview.emergentagent.com. Use mobile viewport 390x844. Backend is external live service at EXPO_PUBLIC_GAME_API_URL — do not run local backend. Ledger accumulates games; use delete-game-<id> to prune. Full turn loop is deterministic once AI moves. For merger/founding-by-human coverage, seed a deterministic game state via backend if possible; otherwise repeatedly play until board is dense enough to bridge chains.",
+  "rca_of_issue": "N/A — no blocking issue found in this iteration."
+}
